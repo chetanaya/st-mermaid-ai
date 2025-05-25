@@ -238,119 +238,369 @@ def generate_mermaid_diagram(
     try:
         llm = get_llm()
 
+        # Comprehensive Mermaid syntax system prompts based on official documentation
         diagram_prompts = {
-            "flowchart": """
-            Create a Mermaid flowchart for: {user_input}
+            "flowchart": r"""
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid flowchart for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid flowchart syntax rules:
+            1. Start with: flowchart TD (top-down) or flowchart LR (left-right)
+            2. Node shapes (use exact syntax):
+               - A[Rectangle] or A["Text with spaces"]
+               - B(Rounded rectangle) or B("Text with spaces")
+               - C{{{{Diamond}}}} or C{{{{"Decision text"}}}}
+               - D((Circle)) or D(("Circle text"))
+               - E>Asymmetric] or E>"Asymmetric text"]
+               - F[/Parallelogram/] or F[/"Parallelogram text"/]
+               - G[\\Parallelogram alt\\] or G[\\"Parallelogram alt text"\\]
+               - H[/Trapezoid\\] or H[/"Trapezoid text"\\]
+               - I[\\Trapezoid alt/] or I[\\"Trapezoid alt text"/]
+            3. Connections:
+               - A --> B (arrow)
+               - A --- B (line)
+               - A -.-> B (dotted arrow)
+               - A -.- B (dotted line)
+               - A ==> B (thick arrow)
+               - A === B (thick line)
+            4. Labels on connections: A -->|"Label text"| B
+            5. Subgraphs: subgraph "Title" ... end
+            6. Node IDs must be unique and alphanumeric (no spaces, special chars except _)
             
-            Use proper Mermaid flowchart syntax:
-            - flowchart TD (top down) or LR (left to right)
-            - Node shapes: A[rectangle], B(rounded), C{{{{diamond}}}}, D((circle))
-            - Arrows: --> or --- for connections
-            - Labels: A -->|label| B
+            EXAMPLE:
+            flowchart TD
+                A["Start"] --> B{{"Decision"}}
+                B -->|"Yes"| C["Process A"]
+                B -->|"No"| D["Process B"]
+                C --> E["End"]
+                D --> E
+            
+            CRITICAL RULES:
+            - Use double quotes for any text with spaces: A["My Node"]
+            - Node IDs cannot contain spaces or special characters
+            - Every connection must reference existing node IDs
+            - Diamond nodes need 4 curly braces: C{{{{text}}}}
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "sequenceDiagram": """
-            Create a Mermaid sequence diagram for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid sequence diagram for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid sequence diagram syntax rules:
+            1. Start with: sequenceDiagram
+            2. Participants (optional): participant A as "Alice"
+            3. Messages:
+               - A->>B: Message (solid arrow)
+               - A-->>B: Response (dashed arrow)
+               - A->>+B: Activate (add +)
+               - A-->>-B: Deactivate (add -)
+               - A-)B: Async message
+            4. Notes:
+               - Note over A: Note text
+               - Note left of A: Left note
+               - Note right of A: Right note
+               - Note over A,B: Spanning note
+            5. Loops: loop Loop text ... end
+            6. Alternatives: alt Alternative text ... else ... end
+            7. Optional: opt Optional text ... end
+            8. Parallel: par Parallel text ... and ... end
+            9. Critical: critical Critical text ... end
+            10. Breaks: break Break text ... end
+            11. Background highlighting: rect rgb(0, 255, 0) ... end
             
-            Use proper Mermaid sequence diagram syntax:
-            - sequenceDiagram
-            - participant Actor
-            - Actor->>+Target: Message
-            - Target-->>-Actor: Response
-            - Note over Actor: Note text
+            EXAMPLE:
+            sequenceDiagram
+                participant U as User
+                participant S as System
+                U->>+S: Login Request
+                S-->>-U: Login Response
+                Note over U,S: User authenticated
+            
+            CRITICAL RULES:
+            - Participant names cannot contain spaces (use underscore or quotes)
+            - Use quotes for multi-word labels: A->>B: "Multi word message"
+            - Activation (+) and deactivation (-) must be balanced
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "gantt": """
-            Create a Mermaid Gantt chart for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid Gantt chart for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid Gantt syntax rules:
+            1. Start with: gantt
+            2. Title: title "Project Title"
+            3. Date format: dateFormat YYYY-MM-DD
+            4. Axis format: axisFormat %m/%d
+            5. Sections: section "Section Name"
+            6. Tasks:
+               - Task name : task_id, start_date, end_date
+               - Task name : task_id, start_date, duration
+               - Task name : done, task_id, start_date, end_date
+               - Task name : active, task_id, start_date, duration
+               - Task name : crit, task_id, start_date, duration
+               - Task name : milestone, task_id, start_date, 0d
+            7. Dependencies: Task name : task_id, after other_task_id, duration
             
-            Use proper Mermaid Gantt syntax:
-            - gantt
-            - title Project Title
-            - dateFormat YYYY-MM-DD
-            - section Section Name
-            - Task Name :done, taskid, start-date, end-date
+            EXAMPLE:
+            gantt
+                title "Project Timeline"
+                dateFormat YYYY-MM-DD
+                section Planning
+                Research : research, 2025-01-01, 10d
+                Design : design, after research, 5d
+                section Development
+                Coding : coding, after design, 15d
+                Testing : testing, after coding, 5d
+            
+            CRITICAL RULES:
+            - Task IDs must be unique and alphanumeric (no spaces)
+            - Dates must match dateFormat (YYYY-MM-DD)
+            - Duration format: 1d, 2w, 3m (days, weeks, months)
+            - Use quotes for task names with spaces
+            - Status keywords: done, active, crit, milestone
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "classDiagram": """
-            Create a Mermaid class diagram for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid class diagram for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid class diagram syntax rules:
+            1. Start with: classDiagram
+            2. Class definition:
+               - class ClassName
+               - class ClassName {{{{
+                   +attribute : type
+                   -private_attr : type
+                   #protected_attr : type
+                   ~package_attr : type
+                   +method() type
+                   +method(param type) return_type
+                 }}}}
+            3. Relationships:
+               - A --|> B : Inheritance
+               - A --* B : Composition
+               - A --o B : Aggregation
+               - A --> B : Association
+               - A -- B : Link (solid)
+               - A ..> B : Dependency
+               - A ..|> B : Realization
+               - A .. B : Link (dashed)
+            4. Cardinality: A "1" --> "many" B
+            5. Labels: A --> B : "label"
+            6. Annotations: <<interface>> ClassName, <<abstract>> ClassName
+            7. Notes: note for ClassName "Note text"
             
-            Use proper Mermaid class diagram syntax:
-            - classDiagram
-            - class ClassName {{{{
-            -    private attribute
-            +    public method()
-            }}}}
-            - ClassName1 --> ClassName2 : relationship
+            EXAMPLE:
+            classDiagram
+                class Animal {{{{
+                    +name : string
+                    +age : int
+                    +makeSound() void
+                }}}}
+                class Dog {{{{
+                    +breed : string
+                    +bark() void
+                }}}}
+                Animal <|-- Dog
+            
+            CRITICAL RULES:
+            - Class names cannot contain spaces (use PascalCase)
+            - Use visibility modifiers: + (public), - (private), # (protected), ~ (package)
+            - Method syntax: methodName(param type) return_type
+            - Use double curly braces for class body: {{{{ }}}}
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "stateDiagram": """
-            Create a Mermaid state diagram for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid state diagram for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid state diagram syntax rules:
+            1. Start with: stateDiagram-v2
+            2. States:
+               - [*] --> State1 (start state)
+               - State1 --> State2 : transition_label
+               - State2 --> [*] (end state)
+            3. State descriptions: 
+               - State1 : "State description"
+               - state "Long State Name" as LSN
+            4. Composite states:
+               - state State1 {{{{
+                   [*] --> InnerState
+                   InnerState --> [*]
+                 }}}}
+            5. Choice states: state choice_state <<choice>>
+            6. Fork/Join: state fork_state <<fork>>, state join_state <<join>>
+            7. Notes: note left of State1 : "Note text"
+            8. Concurrency: State1 --> State2 : event[condition]/action
             
-            Use proper Mermaid state diagram syntax:
-            - stateDiagram-v2
-            - [*] --> State1
-            - State1 --> State2 : condition
-            - State2 --> [*]
+            CRITICAL RULES:
+            - State names cannot contain spaces (use underscore or aliases)
+            - Use [*] for start/end states
+            - Transition labels use : "label"
+            - Use quotes for multi-word descriptions
+            - Composite states use double curly braces: {{{{ }}}}
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "erDiagram": """
-            Create a Mermaid ER diagram for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid ER diagram for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid ER diagram syntax rules:
+            1. Start with: erDiagram
+            2. Entity definition:
+               - ENTITY {{{{
+                   type attribute "comment"
+                   type attribute PK "primary key"
+                   type attribute FK "foreign key"
+                 }}}}
+            3. Attribute types: string, int, bigint, decimal, boolean, date, datetime, text
+            4. Relationships:
+               - ENTITY1 ||--|| ENTITY2 : "one-to-one"
+               - ENTITY1 ||--o{{{{ ENTITY2 : "one-to-many"
+               - ENTITY1 }}}}o--|| ENTITY2 : "many-to-one"
+               - ENTITY1 }}}}o--o{{{{ ENTITY2 : "many-to-many"
+               - ENTITY1 ||..|| ENTITY2 : "one-to-one (non-identifying)"
+               - ENTITY1 ||..o{{{{ ENTITY2 : "one-to-many (non-identifying)"
+            5. Relationship symbols:
+               - || : one
+               - o{{{{ : zero or many
+               - }}}}o : many
+               - || : exactly one
+               - o| : zero or one
             
-            Use proper Mermaid ER diagram syntax:
-            - erDiagram
-            - ENTITY {{{{
-                type attribute
-            }}}}
-            - relationships: ||--o{{{{ one-to-many, }}}}|--|| many-to-one, ||--|| one-to-one
+            EXAMPLE:
+            erDiagram
+                CUSTOMER {{{{
+                    int id PK
+                    string name
+                    string email
+                }}}}
+                ORDER {{{{
+                    int id PK
+                    int customer_id FK
+                    date order_date
+                }}}}
+                CUSTOMER ||--o{{{{ ORDER : "places"
+            
+            CRITICAL RULES:
+            - Entity names must be UPPERCASE
+            - Use double curly braces for entity body: {{{{ }}}}
+            - Attribute format: type attribute_name "optional comment"
+            - Relationship format: ENTITY1 cardinality--cardinality ENTITY2 : "label"
+            - Use PK for primary keys, FK for foreign keys
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "journey": """
-            Create a Mermaid user journey diagram for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid user journey for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid user journey syntax rules:
+            1. Start with: journey
+            2. Title: title "Journey Title"
+            3. Section: section "Section Name"
+            4. Tasks: Task Name: score: Actor1, Actor2, Actor3
+            5. Scores: 1-5 (1=very negative, 5=very positive)
+            6. Multiple actors per task are comma-separated
             
-            Use proper Mermaid journey syntax:
-            - journey
-            - title Journey Title
-            - section Section Name
-            - Task Name: score: Actor1, Actor2
+            CRITICAL RULES:
+            - Use quotes for titles and sections with spaces
+            - Score must be a number 1-5
+            - Actor names cannot contain spaces (use underscore)
+            - Task format: Task Name: score: Actor1, Actor2
+            - Each task line must include score and at least one actor
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "pie": """
-            Create a Mermaid pie chart for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid pie chart for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid pie chart syntax rules:
+            1. Start with: pie title "Chart Title"
+            2. Data entries: "Label" : value
+            3. Values can be numbers or percentages
+            4. Labels with spaces must be in quotes
             
-            Use proper Mermaid pie chart syntax:
-            - pie title Chart Title
-            - "Label 1" : value
-            - "Label 2" : value
+            CRITICAL RULES:
+            - Title must be in quotes if it contains spaces
+            - Data format: "Label Name" : numerical_value
+            - Values should be positive numbers
+            - Each data entry on separate line
+            - No commas between entries
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
             "mindmap": """
-            Create a Mermaid mindmap for: {user_input}
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid mindmap for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid mindmap syntax rules:
+            1. Start with: mindmap
+            2. Root node: root((Central Topic))
+            3. Main branches (level 1): Main Topic
+            4. Sub-branches (level 2): indent with 2 spaces
+            5. Further levels: continue indenting with 2 spaces each level
+            6. Node shapes:
+               - root((Root))
+               - Main Topic
+               - (Round node)
+               - [Square node]
+               - {{{{Cloud node}}}}
+               - ))Bang node((
             
-            Use proper Mermaid mindmap syntax:
-            - mindmap
-            - root((Central Topic))
-            - Topic 1
-            - Topic 2
-            - Subtopic
+            CRITICAL RULES:
+            - Root must be defined with root((text))
+            - Use proper indentation (2 spaces per level)
+            - Node text cannot contain special characters that conflict with shapes
+            - Maintain consistent indentation levels
+            - Each node on its own line
             
             Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
+            """,
+            "gitgraph": """
+            You are a Mermaid diagram expert. Create a syntactically correct Mermaid gitgraph for: {user_input}
+
+            SYSTEM: Follow these EXACT Mermaid gitgraph syntax rules:
+            1. Start with: gitgraph
+            2. Commits: commit id: "commit message"
+            3. Branches: branch branch_name
+            4. Switch branches: checkout branch_name
+            5. Merge: merge branch_name
+            6. Commit types: commit type: HIGHLIGHT, commit type: NORMAL, commit type: REVERSE
+            7. Tags: commit tag: "v1.0"
+            
+            CRITICAL RULES:
+            - Branch names cannot contain spaces (use underscore or hyphen)
+            - Commit messages should be in quotes
+            - Must checkout branch before committing to it
+            - Merge only existing branches
+            - Use proper commit syntax: commit id: "message"
+            
+            Based on analysis: {intent_analysis}
+            
+            Generate ONLY valid Mermaid code. No explanations.
             """,
         }
 
         prompt_template = diagram_prompts.get(
             diagram_type, diagram_prompts["flowchart"]
         )
-        prompt = ChatPromptTemplate.from_template(
-            prompt_template + "\n\nReturn only the Mermaid code, no explanations."
-        )
+        prompt = ChatPromptTemplate.from_template(prompt_template)
 
         chain = prompt | llm
 
@@ -364,7 +614,35 @@ def generate_mermaid_diagram(
         else:
             diagram_code = str(result)
 
-        logger.info(f"Generated diagram code: {diagram_code[:200]}...")
+        # Clean up the result to ensure only Mermaid code is returned
+        diagram_code = diagram_code.strip()
+
+        # Remove any markdown code block markers if present
+        if diagram_code.startswith("```mermaid"):
+            diagram_code = diagram_code.replace("```mermaid", "").strip()
+        if diagram_code.startswith("```"):
+            diagram_code = diagram_code.replace("```", "").strip()
+        if diagram_code.endswith("```"):
+            diagram_code = diagram_code.replace("```", "").strip()
+
+        # Validate the generated syntax
+        is_valid, error_message = validate_mermaid_syntax(diagram_code, diagram_type)
+        if not is_valid:
+            logger.warning(f"Generated diagram failed validation: {error_message}")
+            logger.warning(f"Generated code: {diagram_code}")
+            # Try to fix common issues or provide fallback
+            if diagram_type == "flowchart" and not diagram_code.startswith("flowchart"):
+                diagram_code = "flowchart TD\n" + diagram_code
+                # Re-validate
+                is_valid, _ = validate_mermaid_syntax(diagram_code, diagram_type)
+
+        if is_valid:
+            logger.info(f"Generated valid diagram code: {diagram_code[:200]}...")
+        else:
+            logger.warning(
+                f"Diagram validation still failed, but proceeding: {error_message}"
+            )
+
         return diagram_code
     except Exception as e:
         logger.error(f"Error in generate_mermaid_diagram: {str(e)}")
@@ -844,11 +1122,34 @@ def main():
 
         for i, suggestion in enumerate(state["suggested_diagrams"]):
             with st.expander(f"🎨 {suggestion.title}", expanded=(i == 0)):
-                st.markdown(f"**Description:** {suggestion.description}")
-                st.markdown(f"**Use Case:** {suggestion.use_case}")
-                st.markdown(f"**Complexity:** {suggestion.complexity}")
+                # Create columns for better layout
+                col1, col2 = st.columns([2, 1])
 
-                if st.button(f"Generate {suggestion.title}", key=f"generate_{i}"):
+                with col1:
+                    st.markdown("**📋 Description:**")
+                    st.markdown(f"{suggestion.description}")
+
+                    st.markdown("**🎯 Use Case:**")
+                    st.markdown(f"{suggestion.use_case}")
+
+                with col2:
+                    st.markdown("**📊 Diagram Type:**")
+                    st.code(suggestion.type.value, language="text")
+
+                    st.markdown("**⚡ Complexity:**")
+                    complexity_color = {
+                        "simple": "🟢",
+                        "medium": "🟡",
+                        "complex": "🔴",
+                    }.get(suggestion.complexity.lower(), "⚪")
+                    st.markdown(f"{complexity_color} {suggestion.complexity.title()}")
+
+                st.markdown("---")
+                if st.button(
+                    f"🚀 Generate {suggestion.title}",
+                    key=f"generate_{i}",
+                    type="primary",
+                ):
                     logger.info("=== RECOMMENDATION BUTTON CLICKED ===")
                     logger.info(
                         f"Button clicked for suggestion {i}: {suggestion.title}"
@@ -993,6 +1294,152 @@ def main():
                         language="mermaid",
                     )
                 st.markdown("---")
+
+
+def validate_mermaid_syntax(diagram_code: str, diagram_type: str) -> tuple[bool, str]:
+    """
+    Basic validation of Mermaid diagram syntax.
+    Returns (is_valid, error_message)
+    """
+    if not diagram_code.strip():
+        return False, "Diagram code is empty"
+
+    lines = diagram_code.strip().split("\n")
+    first_line = lines[0].strip()
+
+    # Check if diagram starts with correct type declaration
+    type_declarations = {
+        "flowchart": [
+            "flowchart TD",
+            "flowchart LR",
+            "flowchart TB",
+            "flowchart BT",
+            "flowchart RL",
+        ],
+        "sequenceDiagram": ["sequenceDiagram"],
+        "gantt": ["gantt"],
+        "classDiagram": ["classDiagram"],
+        "stateDiagram": ["stateDiagram-v2", "stateDiagram"],
+        "erDiagram": ["erDiagram"],
+        "journey": ["journey"],
+        "pie": ["pie"],
+        "mindmap": ["mindmap"],
+        "gitgraph": ["gitgraph"],
+    }
+
+    expected_starts = type_declarations.get(diagram_type, [])
+    if expected_starts and not any(
+        first_line.startswith(start) for start in expected_starts
+    ):
+        return False, f"Diagram must start with one of: {', '.join(expected_starts)}"
+
+    # Basic checks for common syntax errors
+    if "{{{{" in diagram_code and diagram_code.count("{{{{") != diagram_code.count(
+        "}}}}"
+    ):
+        return False, "Unbalanced curly braces in diagram"
+
+    if '"' in diagram_code and diagram_code.count('"') % 2 != 0:
+        return False, "Unmatched quotes in diagram"
+
+    return True, "Valid syntax"
+
+
+def generate_fallback_diagram(
+    user_input: str, diagram_type: str, intent_analysis: Dict
+) -> str:
+    """
+    Generate a simple but valid fallback diagram when main generation fails.
+    This ensures users always get a working Mermaid diagram.
+    """
+
+    fallback_diagrams = {
+        "flowchart": f"""flowchart TD
+    A["Start: {user_input[:30]}{"..." if len(user_input) > 30 else ""}"] --> B["Process"]
+    B --> C{{"Decision"}}
+    C -->|"Yes"| D["Success"]
+    C -->|"No"| E["Alternative"]
+    D --> F["End"]
+    E --> F""",
+        "sequenceDiagram": """sequenceDiagram
+    participant User
+    participant System
+    User->>System: Request
+    System->>System: Process
+    System-->>User: Response""",
+        "gantt": """gantt
+    title "Project Timeline"
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Planning : planning, 2025-01-01, 5d
+    Design : design, after planning, 3d
+    section Phase 2
+    Implementation : impl, after design, 10d
+    Testing : testing, after impl, 5d""",
+        "classDiagram": """classDiagram
+    class MainEntity {
+        +id: int
+        +name: string
+        +process() void
+    }
+    class RelatedEntity {
+        +id: int
+        +reference: int
+        +getData() string
+    }
+    MainEntity --> RelatedEntity""",
+        "stateDiagram": """stateDiagram-v2
+    [*] --> Initial
+    Initial --> Processing : start
+    Processing --> Success : complete
+    Processing --> Error : fail
+    Success --> [*]
+    Error --> Initial : retry""",
+        "erDiagram": """erDiagram
+    ENTITY1 {
+        int id PK
+        string name
+        datetime created_at
+    }
+    ENTITY2 {
+        int id PK
+        int entity1_id FK
+        string description
+    }
+    ENTITY1 ||--o{ ENTITY2 : "has"
+""",
+        "journey": """journey
+    title User Journey
+    section Discovery
+    Find Service: 3: User
+    Research Options: 4: User
+    section Engagement
+    Sign Up: 5: User
+    Use Service: 4: User""",
+        "pie": """pie title "Data Distribution"
+    "Category A" : 40
+    "Category B" : 30
+    "Category C" : 20
+    "Category D" : 10""",
+        "mindmap": f"""mindmap
+  root(({user_input[:20] if user_input else "Main Topic"}))
+    Topic 1
+      Subtopic A
+      Subtopic B
+    Topic 2
+      Subtopic C
+      Subtopic D""",
+        "gitgraph": """gitgraph
+    commit id: "Initial commit"
+    branch feature
+    checkout feature
+    commit id: "Add feature"
+    checkout main
+    commit id: "Update main"
+    merge feature""",
+    }
+
+    return fallback_diagrams.get(diagram_type, fallback_diagrams["flowchart"])
 
 
 if __name__ == "__main__":
