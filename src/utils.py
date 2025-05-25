@@ -5,7 +5,7 @@ Includes rendering, download functions, and other helper utilities.
 
 import uuid
 import streamlit as st
-from mermaid_syntax import MermaidSyntax
+from src.mermaid_syntax import MermaidSyntax
 
 
 def render_mermaid_diagram(diagram_code: str) -> str:

@@ -9,9 +9,9 @@ import logging
 from datetime import datetime
 
 # Import our modules
-from agents import create_agent_workflow, AgentState
+from src.agents import create_agent_workflow, AgentState
 from langchain_core.messages import HumanMessage
-from utils import (
+from src.utils import (
     render_mermaid_diagram,
     create_download_links,
     display_analysis_results,
@@ -20,7 +20,7 @@ from utils import (
     validate_and_display_diagram,
     display_error_with_fallback,
 )
-from mermaid_syntax import MermaidSyntax
+from src.mermaid_syntax import MermaidSyntax
 
 # Configure logging
 logging.basicConfig(
@@ -336,7 +336,7 @@ def display_generated_diagram():
 
     # Show syntax help if requested
     if st.session_state.show_syntax_help and diagram_type != "unknown":
-        from utils import show_syntax_help
+        from src.utils import show_syntax_help
 
         show_syntax_help(diagram_type)
 
