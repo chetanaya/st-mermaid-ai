@@ -130,17 +130,19 @@ def handle_user_input():
         user_input = st.text_area(
             "🎯 Describe what you want to visualize:",
             value=st.session_state["new_user_input"],
-            placeholder="Example: I want to show the user registration process in my web application, including validation steps, database operations, and email confirmation...",
+            placeholder="🎯 Describe what you want to visualize!",
             height=120,
             help="Be specific about processes, components, and relationships for better results",
+            label_visibility="collapsed",
         )
         del st.session_state["new_user_input"]
     else:
         user_input = st.text_area(
             "🎯 Describe what you want to visualize:",
-            placeholder="Example: I want to show the user registration process in my web application, including validation steps, database operations, and email confirmation...",
-            height=120,
+            placeholder="🎯 Describe what you want to visualize!",
+            height=80,
             help="Be specific about processes, components, and relationships for better results",
+            label_visibility="collapsed",
         )
 
     return user_input
@@ -212,8 +214,6 @@ def display_suggestions():
 
     for i, suggestion in enumerate(state["suggested_diagrams"]):
         with st.container(border=True):
-            # st.markdown('<div class="suggestion-card">', unsafe_allow_html=True)
-
             # Title with emoji
             emoji = {
                 "flowchart": "📊",
@@ -243,8 +243,6 @@ def display_suggestions():
                     use_container_width=True,
                 ):
                     generate_selected_diagram(suggestion, i)
-
-            # st.markdown("</div>", unsafe_allow_html=True)
 
 
 def generate_selected_diagram(suggestion, index: int):
@@ -368,19 +366,6 @@ def display_recommendations():
 
     # Display the complete HTML block
     st.markdown(recommendations_html, unsafe_allow_html=True)
-
-    # New diagram input
-    col1, col2 = st.columns([3, 1], vertical_alignment="bottom")
-    with col1:
-        new_input = st.text_input(
-            "💭 Create a new diagram based on these recommendations:",
-            placeholder="Describe your next diagram...",
-        )
-    with col2:
-        if st.button("🔄 Generate New", disabled=not new_input):
-            st.session_state.current_state = None  # Reset state
-            st.session_state["new_user_input"] = new_input
-            st.rerun()
 
 
 def display_conversation_history():

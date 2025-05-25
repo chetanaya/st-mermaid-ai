@@ -314,7 +314,7 @@ def create_sidebar_info():
     """Create the sidebar with information and tips."""
 
     with st.sidebar:
-        st.header("📋 How it works")
+        st.header("How it works")
         st.markdown("""
         1. **Describe** what you want to visualize
         2. **Review** AI-suggested diagram types  
@@ -323,23 +323,23 @@ def create_sidebar_info():
         5. **Explore** additional recommendations
         """)
 
-        st.header("🔧 Supported Diagrams")
+        st.header("Supported Diagrams")
         diagram_types = [
-            "📊 Flowcharts - Process flows & workflows",
-            "🔄 Sequence Diagrams - Interactions over time",
-            "📅 Gantt Charts - Project timelines",
-            "🏗️ Class Diagrams - Object-oriented design",
-            "⚡ State Diagrams - State machines",
-            "🗄️ ER Diagrams - Database relationships",
-            "🚶 User Journeys - Experience mapping",
-            "🥧 Pie Charts - Data distribution",
-            "🌳 Git Graphs - Version control flows",
-            "🧠 Mind Maps - Concept mapping",
+            "📊 Flowcharts",
+            "🔄 Sequence Diagrams",
+            "📅 Gantt Charts",
+            "🏗️ Class Diagrams",
+            "⚡ State Diagrams",
+            "🗄️ ER Diagrams",
+            "🚶 User Journeys",
+            "🥧 Pie Charts",
+            "🌳 Git Graphs",
+            "🧠 Mind Maps",
         ]
         for dt in diagram_types:
             st.markdown(dt)
 
-        st.header("💡 Tips")
+        st.header("Tips")
         st.markdown("""
         - Be specific about your process or system
         - Mention key components and their relationships
