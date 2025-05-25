@@ -6,7 +6,8 @@ Transform your ideas into beautiful diagrams using AI-powered analysis and gener
 
 - **AI-Powered Analysis**: Automatically analyzes your text to understand intent and suggest diagram types
 - **Multiple Diagram Types**: Supports 10+ Mermaid diagram types including flowcharts, sequence diagrams, Gantt charts, and more
-- **Interactive Workflow**: Uses LangGraph for a multi-step AI agent workflow
+- **Interactive Workflow**: Uses LangGraph for a multi-step AI agent workflow with specialized code generators
+- **Syntax Validation**: Utilizes MermaidSyntax class for validation and diagram-specific templates
 - **Smart Recommendations**: Provides suggestions for related diagrams and improvements
 - **Download Options**: Export diagrams as Mermaid code or HTML files
 - **Conversation History**: Keeps track of your diagram generation sessions
@@ -35,7 +36,7 @@ Transform your ideas into beautiful diagrams using AI-powered analysis and gener
 
 1. **Clone or download this repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/chetanaya/st-mermaid-ai.git
    cd st-mermaid-ai
    ```
 
@@ -46,7 +47,12 @@ Transform your ideas into beautiful diagrams using AI-powered analysis and gener
    export OPENAI_API_KEY="your-api-key-here"
    ```
    
-   Option B: Streamlit secrets (create `.streamlit/secrets.toml`)
+   Option B: Create a `.env` file in the project root
+   ```
+   OPENAI_API_KEY="your-api-key-here"
+   ```
+   
+   Option C: Streamlit secrets (create `.streamlit/secrets.toml`)
    ```toml
    OPENAI_API_KEY = "your-api-key-here"
    ```
@@ -56,8 +62,15 @@ Transform your ideas into beautiful diagrams using AI-powered analysis and gener
    ./start.sh
    ```
    
-   Or manually:
+   The script will:
+   - Create a virtual environment if one doesn't exist
+   - Install required dependencies
+   - Activate the environment and start the Streamlit app
+   
+   Or manually set up and run:
    ```bash
+   python3 -m venv venv
+   source venv/bin/activate
    pip install -r requirements.txt
    streamlit run app.py
    ```
@@ -84,20 +97,27 @@ Transform your ideas into beautiful diagrams using AI-powered analysis and gener
 
 - **Frontend**: Streamlit for the web interface
 - **AI Framework**: LangChain for LLM interactions
-- **Workflow**: LangGraph for multi-step agent workflows
-- **LLM**: OpenAI GPT-4 for intelligent analysis and generation
-- **Diagram Rendering**: Mermaid.js for client-side rendering
+- **Workflow Engine**: LangGraph for multi-step agent workflows and state management
+- **LLM**: OpenAI GPT-4o-mini for intelligent analysis and diagram generation
+- **Diagram Rendering**: Mermaid.js v11.6.0 for client-side rendering
+- **Diagram Validation**: MermaidSyntax class for validation and template management
 
 ## 📁 Project Structure
 
 ```
 st-mermaid-ai/
-├── app.py              # Main Streamlit application
-├── requirements.txt    # Python dependencies
-├── start.sh           # Startup script
+├── app.py                 # Main Streamlit application
+├── requirements.txt       # Python dependencies
+├── start.sh               # Startup script for environment setup
+├── app.log                # Application logs
+├── src/                   # Source code modules
+│   ├── agents.py          # LangGraph agent workflow definitions
+│   ├── diagram_generators.py # Specialized diagram type generators
+│   ├── mermaid_syntax.py  # Mermaid syntax validation and templates
+│   └── utils.py           # Utility functions for the application
 ├── .streamlit/
-│   └── config.toml    # Streamlit configuration
-└── README.md          # This file
+│   └── config.toml        # Streamlit configuration (if available)
+└── README.md              # This file
 ```
 
 ## 🔧 Configuration
