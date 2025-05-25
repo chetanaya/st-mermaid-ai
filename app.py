@@ -18,7 +18,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langchain_core.output_parsers import JsonOutputParser
 
-# from langchain_core.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel, Field
 
 # Configure logging
@@ -28,9 +27,6 @@ logging.basicConfig(
     handlers=[logging.FileHandler("app.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
-
-# Configuration
-MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 st.set_page_config(
     page_title="Mermaid Diagram Generator",
@@ -147,7 +143,7 @@ def get_llm():
     # Set the API key as environment variable for langchain-openai
     os.environ["OPENAI_API_KEY"] = api_key
     logger.info("LLM initialized successfully")
-    return ChatOpenAI(model="gpt-4", temperature=0.1)
+    return ChatOpenAI(model="gpt-4o-mini")
 
 
 # Agent Tools
@@ -155,17 +151,7 @@ def get_llm():
 def analyze_user_intent(user_input: str) -> Dict:
     """Analyze user input to understand their intent and extract key information."""
     logger.info(f"Analyzing user intent for input: {user_input[:100]}...")
-    
-    if MOCK_MODE:
-        logger.info("Using mock mode for intent analysis")
-        return {
-            "primary_intent": f"Create a diagram for: {user_input[:50]}...",
-            "domain": "software development",
-            "complexity": "medium",
-            "entities": ["user", "authentication", "system"],
-            "relationships": ["user interacts with system", "system validates user"]
-        }
-    
+
     try:
         llm = get_llm()
 
@@ -200,6 +186,7 @@ def analyze_user_intent(user_input: str) -> Dict:
 def suggest_diagram_types(intent_analysis: Dict) -> List[Dict]:
     """Suggest appropriate Mermaid diagram types based on user intent analysis."""
     logger.info(f"Suggesting diagram types for analysis: {intent_analysis}")
+
     try:
         llm = get_llm()
 
@@ -211,31 +198,30 @@ def suggest_diagram_types(intent_analysis: Dict) -> List[Dict]:
         Available Mermaid diagram types:
         - flowchart: For processes, workflows, decision trees
         - sequenceDiagram: For interactions between entities over time
-        - gantt: For project timelines and scheduling
-        - classDiagram: For object-oriented designs, data structures
-        - stateDiagram: For state machines, system states
-        - erDiagram: For database relationships
-        - journey: For user journeys, customer experiences
+        - gantt: For project timelines and schedules
+        - classDiagram: For object-oriented structures and relationships
+        - stateDiagram: For state machines and process states
+        - erDiagram: For database entity relationships
+        - journey: For user experience and customer journeys
         - pie: For proportional data visualization
-        - gitgraph: For git branching strategies
-        - mindmap: For hierarchical information, brainstorming
+        - mindmap: For concept mapping and brainstorming
         
-        Provide suggestions in JSON format with an array of suggestions, each containing:
-        - type: diagram type
+        For each suggestion, provide:
+        - type: diagram type from the list above
         - title: descriptive title
-        - description: what this diagram would show
+        - description: what this diagram would visualize
         - use_case: why this fits the user's needs
-        - complexity: estimated complexity level
+        - complexity: simple, medium, or complex
         
-        Return only valid JSON.
+        Return as JSON array of objects.
         """)
 
-        parser = JsonOutputParser(pydantic_object=DiagramSuggestions)
+        parser = JsonOutputParser()
         chain = prompt | llm | parser
 
         result = chain.invoke({"intent_analysis": json.dumps(intent_analysis)})
-        logger.info(f"Diagram suggestions generated: {result['suggestions']}")
-        return result["suggestions"]
+        logger.info(f"Diagram suggestions generated: {result}")
+        return result if isinstance(result, list) else []
     except Exception as e:
         logger.error(f"Error in suggest_diagram_types: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -246,34 +232,33 @@ def suggest_diagram_types(intent_analysis: Dict) -> List[Dict]:
 def generate_mermaid_diagram(
     user_input: str, diagram_type: str, intent_analysis: Dict
 ) -> str:
-    """Generate Mermaid diagram code based on user input and selected diagram type."""
+    """Generate Mermaid diagram code based on user input and selected type."""
     logger.info(f"Generating {diagram_type} diagram for input: {user_input[:100]}...")
+
     try:
         llm = get_llm()
 
-        # Diagram-specific prompts
         diagram_prompts = {
             "flowchart": """
-            Create a Mermaid flowchart diagram for: {user_input}
+            Create a Mermaid flowchart for: {user_input}
             
             Use proper Mermaid flowchart syntax:
-            - flowchart TD (top-down) or LR (left-right)
-            - Node shapes: [] for rectangles, () for rounded, {} for rhombus, (()) for circles
-            - Connections: --> for arrows, --- for lines
-            - Labels on connections: A -->|label| B
+            - flowchart TD (top down) or LR (left to right)
+            - Node shapes: A[rectangle], B(rounded), C{{{{diamond}}}}, D((circle))
+            - Arrows: --> or --- for connections
+            - Labels: A -->|label| B
             
-            Make it comprehensive and well-structured based on the analysis: {intent_analysis}
+            Based on analysis: {intent_analysis}
             """,
             "sequenceDiagram": """
             Create a Mermaid sequence diagram for: {user_input}
             
             Use proper Mermaid sequence diagram syntax:
             - sequenceDiagram
-            - participant A, participant B
-            - A->>B: message
-            - activate/deactivate for lifelines
-            - Note over A: note text
-            - loops, alternatives with alt/else/end
+            - participant Actor
+            - Actor->>+Target: Message
+            - Target-->>-Actor: Response
+            - Note over Actor: Note text
             
             Based on analysis: {intent_analysis}
             """,
@@ -282,10 +267,10 @@ def generate_mermaid_diagram(
             
             Use proper Mermaid Gantt syntax:
             - gantt
-            - title Project Name
+            - title Project Title
             - dateFormat YYYY-MM-DD
             - section Section Name
-            - Task Name :done/active/crit, task1, start-date, end-date
+            - Task Name :done, taskid, start-date, end-date
             
             Based on analysis: {intent_analysis}
             """,
@@ -294,8 +279,11 @@ def generate_mermaid_diagram(
             
             Use proper Mermaid class diagram syntax:
             - classDiagram
-            - class ClassName { +attribute : type +method() }
-            - relationships: <|-- inheritance, *-- composition, o-- aggregation, --> association
+            - class ClassName {{{{
+            -    private attribute
+            +    public method()
+            }}}}
+            - ClassName1 --> ClassName2 : relationship
             
             Based on analysis: {intent_analysis}
             """,
@@ -305,8 +293,8 @@ def generate_mermaid_diagram(
             Use proper Mermaid state diagram syntax:
             - stateDiagram-v2
             - [*] --> State1
-            - State1 --> State2 : event
-            - state "State Description" as StateAlias
+            - State1 --> State2 : condition
+            - State2 --> [*]
             
             Based on analysis: {intent_analysis}
             """,
@@ -315,8 +303,10 @@ def generate_mermaid_diagram(
             
             Use proper Mermaid ER diagram syntax:
             - erDiagram
-            - ENTITY { type attribute }
-            - relationships: ||--o{ one-to-many, }|--|| many-to-one, ||--|| one-to-one
+            - ENTITY {{{{
+                type attribute
+            }}}}
+            - relationships: ||--o{{{{ one-to-many, }}}}|--|| many-to-one, ||--|| one-to-one
             
             Based on analysis: {intent_analysis}
             """,
