@@ -4,7 +4,6 @@ Modular, clean implementation with specialized diagram generators.
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 import logging
 from datetime import datetime
 
@@ -12,7 +11,6 @@ from datetime import datetime
 from src.agents import create_agent_workflow, AgentState
 from langchain_core.messages import HumanMessage
 from src.utils import (
-    render_mermaid_diagram,
     create_download_links,
     display_analysis_results,
     display_diagram_info,
@@ -26,7 +24,7 @@ from src.mermaid_syntax import MermaidSyntax
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("app.log"), logging.StreamHandler()],
+    handlers=[logging.FileHandler("logs/app.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
@@ -122,28 +120,60 @@ def initialize_session_state():
     if "show_syntax_help" not in st.session_state:
         st.session_state.show_syntax_help = False
 
+    if "diagram_ideas" not in st.session_state:
+        st.session_state.diagram_ideas = None
+
+    if "show_ideas" not in st.session_state:
+        st.session_state.show_ideas = True
+
+    if "user_input_value" not in st.session_state:
+        st.session_state.user_input_value = ""
+
+
+def load_diagram_ideas():
+    """Load dynamic diagram ideas if not already cached."""
+    if st.session_state.diagram_ideas is None:
+        with st.spinner("🤖 AI is generating some inspiring diagram ideas for you..."):
+            try:
+                from src.agents import generate_dynamic_diagram_ideas
+
+                ideas = generate_dynamic_diagram_ideas.invoke({})
+                st.session_state.diagram_ideas = ideas
+            except Exception as e:
+                logger.error(f"Error generating diagram ideas: {e}")
+                st.session_state.diagram_ideas = []
+
 
 def handle_user_input():
     """Handle new user input and start the analysis workflow."""
+    # Initialize user input value in session state if not present
+    if "user_input_value" not in st.session_state:
+        st.session_state.user_input_value = ""
+
+    # Check for selected example from ideas
+    if "selected_example" in st.session_state:
+        st.session_state.user_input_value = st.session_state["selected_example"]
+        del st.session_state["selected_example"]
+        st.session_state.show_ideas = False  # Hide ideas after selection
     # Check for new input from recommendations
-    if "new_user_input" in st.session_state:
-        user_input = st.text_area(
-            "🎯 Describe what you want to visualize:",
-            value=st.session_state["new_user_input"],
-            placeholder="🎯 Describe what you want to visualize!",
-            height=120,
-            help="Be specific about processes, components, and relationships for better results",
-            label_visibility="collapsed",
-        )
+    elif "new_user_input" in st.session_state:
+        st.session_state.user_input_value = st.session_state["new_user_input"]
         del st.session_state["new_user_input"]
-    else:
-        user_input = st.text_area(
-            "🎯 Describe what you want to visualize:",
-            placeholder="🎯 Describe what you want to visualize!",
-            height=80,
-            help="Be specific about processes, components, and relationships for better results",
-            label_visibility="collapsed",
-        )
+        st.session_state.show_ideas = False  # Hide ideas after input
+
+    # Single text area widget with consistent key
+    user_input = st.text_area(
+        "🎯 Describe what you want to visualize:",
+        value=st.session_state.user_input_value,
+        placeholder="🎯 Describe what you want to visualize!",
+        height=120,
+        help="Be specific about processes, components, and relationships for better results",
+        label_visibility="collapsed",
+        key="main_user_input",
+    )
+
+    # Update session state with current value
+    st.session_state.user_input_value = user_input
 
     return user_input
 
@@ -287,7 +317,7 @@ def generate_selected_diagram(suggestion, index: int):
 
 
 def display_generated_diagram():
-    """Display the generated diagram with download options."""
+    """Display the generated diagram with enhanced editing capabilities."""
     if not st.session_state.current_state or not st.session_state.current_state.get(
         "generated_diagram"
     ):
@@ -296,37 +326,28 @@ def display_generated_diagram():
     state = st.session_state.current_state
     diagram_code = state["generated_diagram"]
 
-    st.markdown("### 🎨 Generated Diagram")
-
-    # Validate diagram before displaying
+    # Get diagram type
     diagram_type = (
         state["selected_diagram_type"].value
         if state["selected_diagram_type"]
         else "unknown"
     )
 
+    # Validate diagram before displaying
     if validate_and_display_diagram(diagram_code, diagram_type):
-        # Display the diagram
-        # st.markdown('<div class="diagram-container">', unsafe_allow_html=True)
-        diagram_html = render_mermaid_diagram(diagram_code)
-        with st.container(border=True):
-            components.html(diagram_html, height=600, scrolling=True)
-        # st.markdown("</div>", unsafe_allow_html=True)
+        # Use enhanced Mermaid editor with editing capabilities
+        from src.utils import display_enhanced_mermaid_editor
 
-        # Show code in expander
-        with st.expander("📝 View Mermaid Code", expanded=False):
-            st.code(diagram_code, language="mermaid")
-
-            # Syntax help toggle
-            if st.button("📖 Show Syntax Help"):
-                st.session_state.show_syntax_help = (
-                    not st.session_state.show_syntax_help
-                )
+        current_edited_code = display_enhanced_mermaid_editor(
+            diagram_code, diagram_type
+        )
 
         # Download options
         st.markdown("### 📥 Download Options")
         create_download_links(
-            diagram_code, state["analyzed_intent"].get("primary_intent", "diagram")
+            diagram_code,
+            state["analyzed_intent"].get("primary_intent", "diagram"),
+            current_edited_code,
         )
 
         # Display recommendations
@@ -395,14 +416,11 @@ def main():
     # Session state and logging
     logger.info(f"=== APP START/RERUN at {datetime.now()} ===")
     initialize_session_state()
+    load_diagram_ideas()  # Load diagram ideas on app start
 
     # Header
     st.markdown(
         '<h1 class="main-header">🎨 AI-Powered Mermaid Diagram Generator</h1>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<p class="sub-header">Transform your ideas into beautiful diagrams using AI-powered analysis and generation!</p>',
         unsafe_allow_html=True,
     )
 
@@ -433,6 +451,16 @@ def main():
             display_generated_diagram()
         elif st.session_state.current_state.get("suggested_diagrams"):
             display_suggestions()
+
+    # Show diagram ideas if no current workflow and ideas should be shown
+    if (
+        not st.session_state.current_state
+        and st.session_state.show_ideas
+        and st.session_state.diagram_ideas
+    ):
+        from src.utils import display_diagram_ideas
+
+        display_diagram_ideas(st.session_state.diagram_ideas)
 
     # Version badge
     st.markdown(

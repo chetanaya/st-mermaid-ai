@@ -1,4 +1,5 @@
 streamlit
+streamlit-mermaid
 langchain
 langchain-openai
 langchain-core

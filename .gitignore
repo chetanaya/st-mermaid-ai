@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Ignore Folder
+logs/
+
 # Distribution / packaging
 .Python
 build/

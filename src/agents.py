@@ -153,13 +153,13 @@ def generate_mermaid_diagram(
             {"user_input": user_input, "intent_analysis": intent_analysis}
         )
 
-        # Validate the generated diagram
-        is_valid, error = MermaidSyntax.validate_syntax(diagram_code, diagram_type)
-        if not is_valid:
-            logger.warning(f"Generated diagram has syntax error: {error}")
-            diagram_code = MermaidSyntax.fix_common_errors(diagram_code, diagram_type)
+        # Use enhanced validation with LLM fallback
+        is_valid, validated_code, status_message = enhanced_diagram_validation.invoke(
+            {"diagram_code": diagram_code, "diagram_type": diagram_type}
+        )
 
-        return diagram_code
+        logger.info(f"Diagram validation status: {status_message}")
+        return validated_code
 
     except Exception as e:
         logger.error(f"Error generating {diagram_type} diagram: {e}")
@@ -214,6 +214,145 @@ def generate_recommendations(
             "Consider breaking down complex parts into separate diagrams",
             "Add more detail to specific sections that interest you most",
         ]
+
+
+@tool
+def fix_mermaid_diagram_errors(
+    broken_diagram: str, diagram_type: str, error_message: str
+) -> str:
+    """Use LLM to fix syntax errors in Mermaid diagrams."""
+
+    logger.info("=== LLM FIXING DIAGRAM ERRORS ===")
+    logger.info(f"Error: {error_message}")
+    logger.info(f"Diagram type: {diagram_type}")
+
+    prompt = ChatPromptTemplate.from_template("""
+    You are a Mermaid diagram syntax expert. Fix the syntax errors in the given diagram code.
+
+    Diagram Type: {diagram_type}
+    Error Message: {error_message}
+    Broken Diagram Code:
+    ```
+    {broken_diagram}
+    ```
+
+    Your task:
+    1. Analyze the syntax error in the context of {diagram_type} diagrams
+    2. Fix the specific issues while preserving the diagram's intent and structure
+    3. Ensure the output follows proper Mermaid syntax rules for {diagram_type}
+    4. Return ONLY the corrected Mermaid code, no explanations
+
+    Common fixes needed:
+    - Fix arrow syntax (use --> instead of ->)
+    - Fix braces issues (use single {{ }} instead of double {{{{ }}}})
+    - Fix indentation and spacing
+    - Correct diagram type declarations
+    - Fix quote matching issues
+    - Ensure proper node declarations
+
+    Return the corrected diagram code:
+    """)
+
+    chain = prompt | llm
+
+    try:
+        result = chain.invoke(
+            {
+                "diagram_type": diagram_type,
+                "error_message": error_message,
+                "broken_diagram": broken_diagram,
+            }
+        )
+
+        # Extract the diagram content if wrapped in code blocks
+        if isinstance(result, str):
+            fixed_code = result.strip()
+        else:
+            fixed_code = str(result).strip()
+
+        # Remove code block markers if present
+        if fixed_code.startswith("```"):
+            lines = fixed_code.split("\n")
+            # Find the first line without ``` and last line without ```
+            start_idx = 0
+            end_idx = len(lines)
+
+            for i, line in enumerate(lines):
+                if not line.strip().startswith("```") and line.strip():
+                    start_idx = i
+                    break
+
+            for i in range(len(lines) - 1, -1, -1):
+                if not lines[i].strip().startswith("```") and lines[i].strip():
+                    end_idx = i + 1
+                    break
+
+            fixed_code = "\n".join(lines[start_idx:end_idx])
+
+        # Validate the fixed code
+        is_valid, validation_error = MermaidSyntax.validate_syntax(
+            fixed_code, diagram_type
+        )
+
+        if is_valid:
+            logger.info("✅ LLM successfully fixed the diagram!")
+            return fixed_code
+        else:
+            logger.warning(f"LLM fix still has errors: {validation_error}")
+            # Try one more time with the validation error
+            return MermaidSyntax.fix_common_errors(fixed_code, diagram_type)
+
+    except Exception as e:
+        logger.error(f"Error in LLM diagram fixing: {e}")
+        # Fall back to basic error fixing
+        return MermaidSyntax.fix_common_errors(broken_diagram, diagram_type)
+
+
+@tool
+def enhanced_diagram_validation(diagram_code: str, diagram_type: str) -> tuple:
+    """Enhanced validation with LLM-powered error correction fallback."""
+
+    logger.info("=== ENHANCED DIAGRAM VALIDATION ===")
+
+    # First, try basic validation
+    is_valid, error_message = MermaidSyntax.validate_syntax(diagram_code, diagram_type)
+
+    if is_valid:
+        logger.info("✅ Diagram passed validation")
+        return True, diagram_code, "Valid diagram"
+
+    logger.warning(f"❌ Diagram validation failed: {error_message}")
+
+    # Try basic error fixing first
+    fixed_code = MermaidSyntax.fix_common_errors(diagram_code, diagram_type)
+    is_fixed_valid, _ = MermaidSyntax.validate_syntax(fixed_code, diagram_type)
+
+    if is_fixed_valid:
+        logger.info("🔧 Basic error fixing successful")
+        return True, fixed_code, "Fixed with basic error correction"
+
+    # If basic fixing didn't work, use LLM
+    logger.info("🤖 Attempting LLM-powered error correction...")
+    llm_fixed_code = fix_mermaid_diagram_errors.invoke(
+        {
+            "broken_diagram": diagram_code,
+            "diagram_type": diagram_type,
+            "error_message": error_message,
+        }
+    )
+
+    # Validate LLM fix
+    is_llm_fixed_valid, llm_error = MermaidSyntax.validate_syntax(
+        llm_fixed_code, diagram_type
+    )
+
+    if is_llm_fixed_valid:
+        logger.info("🎯 LLM error correction successful!")
+        return True, llm_fixed_code, "Fixed with AI error correction"
+    else:
+        logger.error(f"LLM fix still has errors: {llm_error}")
+        # Return the best attempt
+        return False, llm_fixed_code, f"Could not fully fix errors: {llm_error}"
 
 
 # Agent Workflow Node Functions
@@ -410,3 +549,119 @@ def create_agent_workflow():
     compiled_workflow = workflow.compile()
     logger.info("Workflow compilation completed")
     return compiled_workflow
+
+
+@tool
+def generate_dynamic_diagram_ideas() -> List[Dict]:
+    """Generate 4-6 dynamic diagram ideas to show users when they first visit."""
+
+    logger.info("=== GENERATING DYNAMIC DIAGRAM IDEAS ===")
+
+    prompt = ChatPromptTemplate.from_template("""
+    Generate 6 inspiring and diverse diagram ideas to showcase the capabilities of a Mermaid diagram generator.
+    These will be shown to users when they first visit the application to give them inspiration.
+
+    Create ideas that:
+    1. Cover different diagram types (flowchart, sequence, gantt, ER, class, state, journey, etc.)
+    2. Span various domains (business, technical, educational, personal)
+    3. Are relatable and practical for most users
+    4. Showcase different complexity levels
+    5. Are modern and relevant to current trends
+
+    Return a JSON array with this structure:
+    [
+        {{
+            "title": "Catchy, descriptive title",
+            "description": "Brief explanation of what this would visualize",
+            "example_input": "Example text a user might enter to create this",
+            "diagram_type": "mermaid_diagram_type",
+            "emoji": "relevant_emoji",
+            "category": "business|technical|educational|personal",
+            "complexity": "simple|medium|complex"
+        }}
+    ]
+
+    Make them engaging and cover these areas:
+    - Software development workflows
+    - Business processes
+    - Project management
+    - System architecture
+    - User experiences
+    - Data relationships
+    - Personal productivity
+    - Learning/educational content
+
+    Focus on practical, real-world scenarios that would genuinely help users.
+    """)
+
+    chain = prompt | llm | JsonOutputParser()
+
+    try:
+        result = chain.invoke({})
+
+        # Ensure we return a list
+        if isinstance(result, list):
+            return result[:6]  # Limit to 6 ideas
+        else:
+            logger.warning("Unexpected result format from idea generation")
+            return []
+
+    except Exception as e:
+        logger.error(f"Error generating dynamic diagram ideas: {e}")
+        # Return fallback ideas
+        return [
+            {
+                "title": "E-commerce Order Flow",
+                "description": "Visualize the complete customer order process from cart to delivery",
+                "example_input": "Show me the process when a customer places an order online, including payment processing, inventory check, and shipping",
+                "diagram_type": "flowchart",
+                "emoji": "🛒",
+                "category": "business",
+                "complexity": "medium",
+            },
+            {
+                "title": "API Authentication Sequence",
+                "description": "Map out how users authenticate with your REST API",
+                "example_input": "Create a sequence diagram showing OAuth 2.0 authentication flow between client, auth server, and resource server",
+                "diagram_type": "sequenceDiagram",
+                "emoji": "🔐",
+                "category": "technical",
+                "complexity": "medium",
+            },
+            {
+                "title": "Mobile App Development Timeline",
+                "description": "Plan your app development project with milestones and deadlines",
+                "example_input": "Create a project timeline for developing a mobile app over 4 months including design, development, testing, and launch phases",
+                "diagram_type": "gantt",
+                "emoji": "📱",
+                "category": "business",
+                "complexity": "simple",
+            },
+            {
+                "title": "Database Schema Design",
+                "description": "Design relationships between entities in your database",
+                "example_input": "Design a database schema for a blog platform with users, posts, comments, and categories",
+                "diagram_type": "erDiagram",
+                "emoji": "🗄️",
+                "category": "technical",
+                "complexity": "medium",
+            },
+            {
+                "title": "Customer Journey Map",
+                "description": "Understand your customer's experience from discovery to purchase",
+                "example_input": "Map the customer journey for someone discovering and buying products on our e-commerce website",
+                "diagram_type": "journey",
+                "emoji": "🎯",
+                "category": "business",
+                "complexity": "simple",
+            },
+            {
+                "title": "Software Architecture Overview",
+                "description": "Visualize the components and relationships in your system",
+                "example_input": "Show the class structure for a social media application with users, posts, likes, and messaging features",
+                "diagram_type": "classDiagram",
+                "emoji": "🏗️",
+                "category": "technical",
+                "complexity": "complex",
+            },
+        ]
